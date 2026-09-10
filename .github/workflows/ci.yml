@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint and Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check code formatting (StyLua)
+        uses: JohnnyMorganz/stylua-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --check .
+
+      - name: Lua code analysis (Luacheck)
+        uses: lunarmodules/luacheck@v1
+        with:
+          args: lua tests --config .luacheckrc
+
+  test:
+    name: Unit & Integration Tests (${{ matrix.os }} - ${{ matrix.neovim-version }})
+    runs-on: ${{ matrix.os }}
+    needs: [lint]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        neovim-version: [v0.10.0, stable, nightly]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim-version }}
+
+      - name: Install dependencies (plenary.nvim)
+        run: |
+          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim .ci/plenary.nvim
+
+      - name: Install moo-lsp-rs binary
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          OS="$(uname -s)"
+          ARCH="$(uname -m)"
+          if [ "$OS" = "Linux" ]; then
+            TARGET="linux-x64"
+          elif [ "$OS" = "Darwin" ]; then
+            if [ "$ARCH" = "arm64" ]; then
+              TARGET="darwin-arm64"
+            else
+              TARGET="darwin-x64"
+            fi
+          fi
+          curl -sL "https://github.com/kruton/moo-lsp-rs/releases/download/v0.2.14/moo-lsp-rs-${TARGET}.tar.gz" | tar -xz --strip-components=1 -C "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/moo-lsp-rs"
+
+      - name: Run plenary test harness
+        run: |
+          nvim --headless -u tests/minimal_init.lua -c "PlenaryBustedDirectory tests {minimal_init = 'tests/minimal_init.lua', sequential = true}"
