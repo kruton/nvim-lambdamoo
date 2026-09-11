@@ -20,6 +20,7 @@ A Neovim plugin for LambdaMOO development, providing virtual filesystem (VFS) ac
 
 - Neovim `>= 0.10.0`
 - [`nvim-lua/plenary.nvim`](https://github.com/nvim-lua/plenary.nvim)
+- [`a-usr/xml2lua.nvim`](https://github.com/a-usr/xml2lua.nvim)
 - `curl`
 
 ---
@@ -33,6 +34,7 @@ A Neovim plugin for LambdaMOO development, providing virtual filesystem (VFS) ac
   "kruton/nvim-lambdamoo",
   dependencies = {
     "nvim-lua/plenary.nvim",
+    "a-usr/xml2lua.nvim",
   },
   opts = {
     connections = {
@@ -53,7 +55,7 @@ A Neovim plugin for LambdaMOO development, providing virtual filesystem (VFS) ac
 ```lua
 use({
   "kruton/nvim-lambdamoo",
-  requires = { "nvim-lua/plenary.nvim" },
+  requires = { "nvim-lua/plenary.nvim", "a-usr/xml2lua.nvim" },
   config = function()
     require("lambdamoo").setup({
       connections = {
