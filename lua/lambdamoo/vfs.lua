@@ -10,20 +10,72 @@ function M.setup()
     pattern = "moo://*",
     callback = function(args)
       local uri = args.match
-      local content, err = webdav.read_file(uri)
-      if content then
-        -- Normalize line breaks and avoid trailing empty line
-        content = content:gsub("\r\n", "\n"):gsub("\r", "\n")
-        if content:sub(-1) == "\n" then
-          content = content:sub(1, -2)
+      if uri:sub(-1) == "/" then
+        -- Directory browsing mode
+        local children, err = webdav.list_dir(uri)
+        if children then
+          local lines = {}
+          for _, child in ipairs(children) do
+            -- Format name and custom info nicely
+            local info = {}
+            if child.owner and child.owner ~= "" then
+              table.insert(info, child.owner)
+            end
+            if child.perms and child.perms ~= "" then
+              table.insert(info, child.perms)
+            end
+            if child.names and child.names ~= "" then
+              table.insert(info, child.names)
+            end
+            if child.args and child.args ~= "" then
+              table.insert(info, child.args)
+            end
+
+            local info_str = table.concat(info, "  ")
+            if info_str ~= "" then
+              table.insert(lines, string.format("%-30s %s", child.name, info_str))
+            else
+              table.insert(lines, child.name)
+            end
+          end
+          vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
+          vim.bo[args.buf].buftype = "nofile"
+          vim.bo[args.buf].filetype = "moo_dir"
+          vim.bo[args.buf].modifiable = false
+
+          -- Map <CR> to edit the file/directory under the cursor
+          vim.keymap.set("n", "<CR>", function()
+            local line_num = vim.api.nvim_win_get_cursor(0)[1]
+            local child = children[line_num]
+            if child then
+              -- if the URI doesn't include the moo:// prefix, rebuild it
+              local target = child.uri
+              if not target:match("^moo://") then
+                local authority = uri:match("^moo://([^/]+)/")
+                target = string.format("moo://%s%s", authority, target)
+              end
+              vim.cmd("edit " .. target)
+            end
+          end, { buffer = args.buf, silent = true })
+        else
+          vim.notify("Failed to list directory " .. uri .. (err and (": " .. err) or ""), vim.log.levels.ERROR)
         end
-        local lines = vim.split(content, "\n", { plain = true })
-        vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
-        vim.bo[args.buf].buftype = "acwrite"
-        vim.bo[args.buf].filetype = "moo"
-        vim.bo[args.buf].modified = false
       else
-        vim.notify("Failed to read " .. uri .. (err and (": " .. err) or ""), vim.log.levels.ERROR)
+        local content, err = webdav.read_file(uri)
+        if content then
+          -- Normalize line breaks and avoid trailing empty line
+          content = content:gsub("\r\n", "\n"):gsub("\r", "\n")
+          if content:sub(-1) == "\n" then
+            content = content:sub(1, -2)
+          end
+          local lines = vim.split(content, "\n", { plain = true })
+          vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
+          vim.bo[args.buf].buftype = "acwrite"
+          vim.bo[args.buf].filetype = "moo"
+          vim.bo[args.buf].modified = false
+        else
+          vim.notify("Failed to read " .. uri .. (err and (": " .. err) or ""), vim.log.levels.ERROR)
+        end
       end
     end,
   })
