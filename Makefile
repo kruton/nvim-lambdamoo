@@ -2,6 +2,7 @@
 
 NVIM ?= nvim
 PLENARY_DIR ?= .ci/plenary.nvim
+XML2LUA_DIR ?= .ci/xml2lua.nvim
 TEST_DIR = tests
 MINIMAL_INIT = tests/minimal_init.lua
 LOCAL_BIN ?= $(HOME)/.local/bin
@@ -14,7 +15,7 @@ help:
 	@echo "Available targets:"
 	@echo "  make test                 Run all tests"
 	@echo "  make test FILE=<path>     Run a single test file (e.g. make test FILE=tests/webdav_spec.lua)"
-	@echo "  make deps                 Install test dependencies (plenary.nvim and luacheck)"
+	@echo "  make deps                 Install test dependencies (plenary.nvim, xml2lua.nvim, and luacheck)"
 	@echo "  make fmt                  Format Lua files with stylua"
 	@echo "  make fmt-check            Check Lua formatting with stylua"
 	@echo "  make lint                 Lint Lua files with luacheck"
@@ -26,6 +27,12 @@ deps:
 		git clone --depth 1 https://github.com/nvim-lua/plenary.nvim $(PLENARY_DIR); \
 	else \
 		echo "plenary.nvim already present at $(PLENARY_DIR)"; \
+	fi
+	@if [ ! -d "$(XML2LUA_DIR)" ]; then \
+		echo "Cloning xml2lua.nvim into $(XML2LUA_DIR)..."; \
+		git clone --depth 1 https://github.com/a-usr/xml2lua.nvim $(XML2LUA_DIR); \
+	else \
+		echo "xml2lua.nvim already present at $(XML2LUA_DIR)"; \
 	fi
 	@if command -v luacheck >/dev/null 2>&1; then \
 		echo "luacheck is already installed at $$(command -v luacheck)"; \
@@ -87,4 +94,4 @@ lint:
 	fi
 
 clean:
-	rm -rf $(PLENARY_DIR) $(CI_BIN)
+	rm -rf $(PLENARY_DIR) $(XML2LUA_DIR) $(CI_BIN)

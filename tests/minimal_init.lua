@@ -19,6 +19,17 @@ for _, path in ipairs(plenary_paths) do
   end
 end
 
+local xml2lua_paths = {
+  repo_root .. "/.ci/xml2lua.nvim",
+  vim.fn.stdpath("data") .. "/site/pack/plugins/start/xml2lua.nvim",
+}
+for _, path in ipairs(xml2lua_paths) do
+  if vim.fn.isdirectory(path) == 1 then
+    vim.opt.rtp:prepend(path)
+    break
+  end
+end
+
 if not plenary_found then
   local plenary_files = vim.api.nvim_get_runtime_file("lua/plenary/busted.lua", false)
   if #plenary_files == 0 then
