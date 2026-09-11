@@ -3,6 +3,7 @@ local M = {}
 -- Add repository root to runtimepath
 local repo_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
 vim.opt.rtp:prepend(repo_root)
+vim.opt.swapfile = false
 
 -- Look for plenary in .ci or Neovim's installed packpath
 local plenary_paths = {
