@@ -129,4 +129,21 @@ describe("lambdamoo.vfs", function()
     webdav.list_dir = original_list_dir
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
+
+  it("rewrites owned verb URIs to canonical object URIs on BufReadCmd", function()
+    local read_uri = nil
+    webdav.read_file = function(uri)
+      read_uri = uri
+      return "player:tell();\n"
+    end
+
+    local buf = vim.fn.bufadd("moo://waterpoint/owned/525/verb/check_authorization")
+    vim.api.nvim_buf_call(buf, function()
+      vim.cmd("doautocmd BufReadCmd moo://waterpoint/owned/525/verb/check_authorization")
+    end)
+
+    assert.are.equal("moo://waterpoint/object/525/verb/check_authorization", vim.api.nvim_buf_get_name(buf))
+    assert.are.equal("moo://waterpoint/object/525/verb/check_authorization", read_uri)
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
 end)

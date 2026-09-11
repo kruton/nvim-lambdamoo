@@ -338,4 +338,22 @@ describe("lambdamoo.webdav", function()
       assert.are.equal('{"this", "none", "this"}', item.args)
     end)
   end)
+
+  describe("canonical_object_uri", function()
+    it("canonicalizes paths opened through the owned-object collection", function()
+      assert.are.equal(
+        "moo://testserver/object/454/verb/check_authorization",
+        webdav.canonical_object_uri("moo://testserver/owned/454/verb/check_authorization")
+      )
+      assert.are.equal(
+        "moo://testserver/object/-1/property/name/string",
+        webdav.canonical_object_uri("moo://testserver/owned/-1/property/name/string")
+      )
+      assert.are.equal("moo://testserver/owned", webdav.canonical_object_uri("moo://testserver/owned"))
+      assert.are.equal(
+        "moo://testserver/object/454/verb/check_authorization",
+        webdav.canonical_object_uri("moo://testserver/object/454/verb/check_authorization")
+      )
+    end)
+  end)
 end)

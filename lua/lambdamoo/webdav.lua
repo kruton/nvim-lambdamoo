@@ -281,4 +281,18 @@ function M.resolve_verb_definition(uri)
   return uri
 end
 
+function M.canonical_object_uri(uri)
+  local authority, path = parse_uri(uri)
+  if not authority or not path then
+    return uri
+  end
+
+  local id, rest = path:match("^owned/(%-?%d+)(/.*)$")
+  if id and rest then
+    return string.format("moo://%s/object/%s%s", authority, id, rest)
+  end
+
+  return uri
+end
+
 return M
