@@ -72,7 +72,7 @@ jobs:
               TARGET="darwin-x64"
             fi
           fi
-          curl -sL "https://github.com/kruton/moo-lsp-rs/releases/download/v0.2.14/moo-lsp-rs-${TARGET}.tar.gz" | tar -xz --strip-components=1 -C "$HOME/.local/bin"
+          curl -sL "https://github.com/kruton/moo-lsp-rs/releases/download/v0.3.0/moo-lsp-rs-${TARGET}.tar.gz" | tar -xz --strip-components=1 -C "$HOME/.local/bin"
           chmod +x "$HOME/.local/bin/moo-lsp-rs"
 
       - name: Run plenary test harness
