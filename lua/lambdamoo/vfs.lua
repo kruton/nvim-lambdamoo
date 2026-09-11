@@ -49,9 +49,6 @@ function M.setup()
             local child = children[line_num]
             if child and child.uri then
               local target = child.uri
-              if not target:match("/$") and target:match("/verb/") then
-                target = webdav.canonical_verb_uri(target)
-              end
               vim.cmd("edit " .. vim.fn.fnameescape(target))
             end
           end, { buffer = args.buf, silent = true, desc = "Open item under cursor" })
@@ -76,13 +73,6 @@ function M.setup()
           vim.notify("Failed to list directory " .. uri .. (err and (": " .. err) or ""), vim.log.levels.ERROR)
         end
       else
-        if uri:match("/verb/") then
-          local canonical = webdav.canonical_verb_uri(uri)
-          if canonical ~= uri then
-            pcall(vim.api.nvim_buf_set_name, args.buf, canonical)
-            uri = canonical
-          end
-        end
         local content, err = webdav.read_file(uri)
         if content then
           -- Normalize line breaks and avoid trailing empty line

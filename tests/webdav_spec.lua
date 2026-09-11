@@ -150,63 +150,6 @@ describe("lambdamoo.webdav", function()
     end)
   end)
 
-  describe("resolve_verb_definition", function()
-    local original_read_file
-
-    before_each(function()
-      original_read_file = webdav.read_file
-    end)
-
-    after_each(function()
-      webdav.read_file = original_read_file
-    end)
-
-    it("leaves non-verb URIs untouched", function()
-      local uri = "moo://testserver/object/123/prop/name"
-      assert.are.equal(uri, webdav.resolve_verb_definition(uri))
-    end)
-
-    it("resolves verb to ancestor object where it is defined", function()
-      webdav.read_file = function(uri)
-        if uri == "moo://testserver/object/123/resolve/verb/tell/defined-on" then
-          return "#1"
-        end
-        return nil, "Not found"
-      end
-
-      local resolved = webdav.resolve_verb_definition("moo://testserver/object/123/verb/tell")
-      assert.are.equal("moo://testserver/object/1/verb/tell", resolved)
-    end)
-
-    it("returns original URI if resolution fails or returns invalid target", function()
-      webdav.read_file = function(_)
-        return nil, "Not found"
-      end
-
-      local uri = "moo://testserver/object/123/verb/tell"
-      assert.are.equal(uri, webdav.resolve_verb_definition(uri))
-    end)
-
-    it("resolves verb URLs formatted as moo://codepoint/object/168/verb/test2", function()
-      lambdamoo.config.connections = {
-        {
-          authority = "codepoint",
-          endpoint = "https://codepoint.the-b.org/dav/",
-        },
-      }
-
-      webdav.read_file = function(uri)
-        if uri == "moo://codepoint/object/168/resolve/verb/test2/defined-on" then
-          return "#1"
-        end
-        return nil, "Not found"
-      end
-
-      local resolved = webdav.resolve_verb_definition("moo://codepoint/object/168/verb/test2")
-      assert.are.equal("moo://codepoint/object/1/verb/test2", resolved)
-    end)
-  end)
-
   describe("codepoint connection handling", function()
     it("handles full read cycle for moo://codepoint/object/168/verb/test2", function()
       lambdamoo.config.connections = {
@@ -336,43 +279,6 @@ describe("lambdamoo.webdav", function()
       assert.are.equal("#267", item.owner)
       assert.are.equal("rxd", item.perms)
       assert.are.equal('{"this", "none", "this"}', item.args)
-    end)
-  end)
-
-  describe("canonical_object_uri", function()
-    it("canonicalizes paths opened through the owned-object collection", function()
-      assert.are.equal(
-        "moo://testserver/object/454/verb/check_authorization",
-        webdav.canonical_object_uri("moo://testserver/owned/454/verb/check_authorization")
-      )
-      assert.are.equal(
-        "moo://testserver/object/-1/property/name/string",
-        webdav.canonical_object_uri("moo://testserver/owned/-1/property/name/string")
-      )
-      assert.are.equal("moo://testserver/owned", webdav.canonical_object_uri("moo://testserver/owned"))
-      assert.are.equal(
-        "moo://testserver/object/454/verb/check_authorization",
-        webdav.canonical_object_uri("moo://testserver/object/454/verb/check_authorization")
-      )
-    end)
-  end)
-
-  describe("canonical_verb_uri", function()
-    it("canonicalizes verb paths across property chains and defined-on origins", function()
-      local original_read_file = webdav.read_file
-      webdav.read_file = function(uri)
-        if uri == "moo://testserver/object/0/property/string_utils/object/resolve/verb/explode/defined-on" then
-          return "#18"
-        end
-        return nil, "Not found"
-      end
-
-      assert.are.equal(
-        "moo://testserver/object/18/verb/explode",
-        webdav.canonical_verb_uri("moo://testserver/object/0/property/string_utils/object/verb/explode")
-      )
-
-      webdav.read_file = original_read_file
     end)
   end)
 end)

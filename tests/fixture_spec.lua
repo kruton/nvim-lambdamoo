@@ -23,6 +23,8 @@ describe("LSP fixture #1:fixture_1", function()
         }, "\n")
       elseif uri:match("^moo://waterpoint/object/0/property/you/.*/defined%-on$") then
         return "#1\n"
+      elseif uri == "moo://waterpoint/object/1/verb/say_action" then
+        return '"Perform an action.";\n{message} = args;\nreturn 1;\n'
       end
       return nil, "Not found: " .. uri
     end
@@ -130,39 +132,21 @@ describe("LSP fixture #1:fixture_1", function()
     local hover_text = hover_res.contents and hover_res.contents.value or ""
     assert.is_truthy(hover_text:match("index%(str1: STR, str2: STR"))
 
-    -- 3. Pressing K over 'say_action' on line 4 (0-indexed line 3)
-    -- When hover is requested on a custom verb, hover_handler falls back to definition
-    -- resolution, which queries moo://waterpoint/object/0/property/you/*
-    local hover_handler = client.handlers["textDocument/hover"]
-    assert.is_not_nil(hover_handler, "Hover handler should be registered")
-
-    local hover_fallback_rendered = false
-    local original_default_hover = vim.lsp.handlers["textDocument/hover"]
-    vim.lsp.handlers["textDocument/hover"] = function(err, result, ctx, config)
-      if result and result.contents and result.contents.value then
-        if result.contents.value:match("Defined on: moo://waterpoint/object/1/verb/say_action") then
-          hover_fallback_rendered = true
-        end
-      end
-    end
-
-    hover_handler(nil, nil, {
-      client_id = client.id,
-      bufnr = buf,
-      params = {
-        textDocument = vim.lsp.util.make_text_document_params(buf),
-        position = { line = 3, character = 6 },
-      },
-    }, {})
-
+    -- 3. The server resolves and documents custom verbs through the client read hook.
+    local method_hover = nil
+    lsp_request("textDocument/hover", {
+      textDocument = vim.lsp.util.make_text_document_params(buf),
+      position = { line = 3, character = 8 },
+    }, function(_err, result)
+      method_hover = result or false
+    end)
     vim.wait(3000, function()
-      return hover_fallback_rendered
+      return method_hover ~= nil
     end, 50)
-    vim.lsp.handlers["textDocument/hover"] = original_default_hover
-    assert.is_true(
-      hover_fallback_rendered,
-      "Pressing K over say_action should trigger definition lookup and display resolved target in hover"
-    )
+    local method_text = method_hover.contents and method_hover.contents.value or ""
+    assert.is_truthy(method_text:match("{message} = args;"))
+    assert.is_truthy(method_text:match("Perform an action%."))
+    assert.is_truthy(method_text:match("moo://waterpoint/object/1/verb/say_action"))
 
     -- Check that webdav requests were made for moo://waterpoint/object/0/property/you/*
     local matched_prop_request = false
@@ -177,25 +161,17 @@ describe("LSP fixture #1:fixture_1", function()
       "Expected a request for moo://waterpoint/object/0/property/you/* but saw: " .. vim.inspect(webdav_requests)
     )
 
-    -- 4. Verify definition_handler rewrites moo:// definition locations
-    local def_handler = client.handlers["textDocument/definition"]
-    assert.is_not_nil(def_handler, "Definition handler should be registered")
-
+    -- 4. Definition responses are already canonical when returned by the server.
     local resolved_definition = nil
-    local original_default_def = vim.lsp.handlers["textDocument/definition"]
-    vim.lsp.handlers["textDocument/definition"] = function(err, result, ctx, config)
-      resolved_definition = result
-    end
-
-    local raw_loc = {
-      uri = "moo://waterpoint/object/0/property/you/object/verb/say_action",
-      range = {
-        start = { line = 0, character = 0 },
-        ["end"] = { line = 0, character = 0 },
-      },
-    }
-    def_handler(nil, raw_loc, { client_id = client.id, bufnr = buf }, {})
-    vim.lsp.handlers["textDocument/definition"] = original_default_def
+    lsp_request("textDocument/definition", {
+      textDocument = vim.lsp.util.make_text_document_params(buf),
+      position = { line = 3, character = 8 },
+    }, function(_err, result)
+      resolved_definition = result or false
+    end)
+    vim.wait(3000, function()
+      return resolved_definition ~= nil
+    end, 50)
 
     local final_uri = (type(resolved_definition) == "table" and resolved_definition.uri) or ""
     assert.are.equal("moo://waterpoint/object/1/verb/say_action", final_uri)

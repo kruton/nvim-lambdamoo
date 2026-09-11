@@ -19,6 +19,7 @@ A Neovim plugin for LambdaMOO development, providing virtual filesystem (VFS) ac
 ## Requirements
 
 - Neovim `>= 0.10.0`
+- A `moo-lsp-rs` build advertising remote document protocol version 1
 - [`nvim-lua/plenary.nvim`](https://github.com/nvim-lua/plenary.nvim)
 - [`a-usr/xml2lua.nvim`](https://github.com/a-usr/xml2lua.nvim)
 - `curl`
