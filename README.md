@@ -108,6 +108,24 @@ require("lambdamoo").setup({
 })
 ```
 
+### LSP Keybindings (`gd` / `K`)
+
+To map "Go to Definition" (`gd`) and "Hover" (`K`) when the language server attaches, add an `LspAttach` autocommand to your Neovim configuration:
+
+```lua
+vim.api.nvim_create_autocmd("LspAttach", {
+  group = vim.api.nvim_create_augroup("UserLspConfig", {}),
+  callback = function(ev)
+    local opts = { buffer = ev.buf }
+    -- Go to definition (resolves remote verbs across moo://)
+    vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+    -- Hover documentation / definition origins
+    vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+  end,
+})
+```
+
+
 ---
 
 ## Usage
