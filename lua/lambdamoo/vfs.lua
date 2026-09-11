@@ -18,16 +18,16 @@ function M.setup()
           for _, child in ipairs(children) do
             -- Format name and custom info nicely
             local info = {}
-            if child.owner and child.owner ~= "" then
+            if type(child.owner) == "string" and child.owner ~= "" then
               table.insert(info, child.owner)
             end
-            if child.perms and child.perms ~= "" then
+            if type(child.perms) == "string" and child.perms ~= "" then
               table.insert(info, child.perms)
             end
-            if child.args and child.args ~= "" then
+            if type(child.args) == "string" and child.args ~= "" then
               table.insert(info, child.args)
             end
-            if child.names and child.names ~= "" and child.names ~= child.name:gsub("/$", "") then
+            if type(child.names) == "string" and child.names ~= "" and child.names ~= child.name:gsub("/$", "") then
               table.insert(info, "(" .. child.names .. ")")
             end
 

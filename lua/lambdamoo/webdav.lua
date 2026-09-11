@@ -222,17 +222,30 @@ function M.list_dir(uri)
 
           local child_uri = string.format("moo://%s/%s", authority, rel_path)
 
-          local owner = props["M:owner"] or props["moo-owner"] or props["owner"] or ""
-          local perms = props["M:permissions"] or props["moo-permissions"] or props["permissions"] or ""
-          local names = props["M:names"] or props["moo-names"] or props["names"] or ""
-          local args_str = props["M:arguments"] or props["moo-arguments"] or props["arguments"] or ""
+          local to_string = function(val)
+            if type(val) == "table" then
+              if #val > 0 then
+                return tostring(val[1])
+              end
+              return ""
+            end
+            if val == nil then
+              return ""
+            end
+            return tostring(val)
+          end
+
+          local owner = to_string(props["M:owner"] or props["moo-owner"] or props["owner"])
+          local perms = to_string(props["M:permissions"] or props["moo-permissions"] or props["permissions"])
+          local names = to_string(props["M:names"] or props["moo-names"] or props["names"])
+          local args_str = to_string(props["M:arguments"] or props["moo-arguments"] or props["arguments"])
 
           table.insert(children, {
             name = name,
-            owner = type(owner) == "table" and owner[1] or owner,
-            perms = type(perms) == "table" and perms[1] or perms,
-            names = type(names) == "table" and names[1] or names,
-            args = type(args_str) == "table" and args_str[1] or args_str,
+            owner = owner,
+            perms = perms,
+            names = names,
+            args = args_str,
             uri = child_uri,
           })
         end
