@@ -356,4 +356,23 @@ describe("lambdamoo.webdav", function()
       )
     end)
   end)
+
+  describe("canonical_verb_uri", function()
+    it("canonicalizes verb paths across property chains and defined-on origins", function()
+      local original_read_file = webdav.read_file
+      webdav.read_file = function(uri)
+        if uri == "moo://testserver/object/0/property/string_utils/object/resolve/verb/explode/defined-on" then
+          return "#18"
+        end
+        return nil, "Not found"
+      end
+
+      assert.are.equal(
+        "moo://testserver/object/18/verb/explode",
+        webdav.canonical_verb_uri("moo://testserver/object/0/property/string_utils/object/verb/explode")
+      )
+
+      webdav.read_file = original_read_file
+    end)
+  end)
 end)

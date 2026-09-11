@@ -50,7 +50,7 @@ function M.setup()
             if child and child.uri then
               local target = child.uri
               if not target:match("/$") and target:match("/verb/") then
-                target = webdav.canonical_object_uri(target)
+                target = webdav.canonical_verb_uri(target)
               end
               vim.cmd("edit " .. vim.fn.fnameescape(target))
             end
@@ -77,7 +77,7 @@ function M.setup()
         end
       else
         if uri:match("/verb/") then
-          local canonical = webdav.canonical_object_uri(uri)
+          local canonical = webdav.canonical_verb_uri(uri)
           if canonical ~= uri then
             pcall(vim.api.nvim_buf_set_name, args.buf, canonical)
             uri = canonical

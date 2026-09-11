@@ -146,4 +146,24 @@ describe("lambdamoo.vfs", function()
     assert.are.equal("moo://waterpoint/object/525/verb/check_authorization", read_uri)
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
+
+  it("resolves and canonicalizes indirect verb URIs to defined-on object on BufReadCmd", function()
+    local read_uri = nil
+    webdav.read_file = function(uri)
+      if uri == "moo://waterpoint/object/0/property/string_utils/object/resolve/verb/explode/defined-on" then
+        return "#18"
+      end
+      read_uri = uri
+      return '" explode code ";\n'
+    end
+
+    local buf = vim.fn.bufadd("moo://waterpoint/object/0/property/string_utils/object/verb/explode")
+    vim.api.nvim_buf_call(buf, function()
+      vim.cmd("doautocmd BufReadCmd moo://waterpoint/object/0/property/string_utils/object/verb/explode")
+    end)
+
+    assert.are.equal("moo://waterpoint/object/18/verb/explode", vim.api.nvim_buf_get_name(buf))
+    assert.are.equal("moo://waterpoint/object/18/verb/explode", read_uri)
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
 end)

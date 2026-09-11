@@ -295,4 +295,12 @@ function M.canonical_object_uri(uri)
   return uri
 end
 
+function M.canonical_verb_uri(uri)
+  local canonical = M.canonical_object_uri(uri)
+  if canonical:match("/verb/[^/]+$") then
+    canonical = M.resolve_verb_definition(canonical)
+  end
+  return canonical
+end
+
 return M
