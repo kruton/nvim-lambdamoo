@@ -24,11 +24,11 @@ function M.setup()
             if child.perms and child.perms ~= "" then
               table.insert(info, child.perms)
             end
-            if child.names and child.names ~= "" then
-              table.insert(info, child.names)
-            end
             if child.args and child.args ~= "" then
               table.insert(info, child.args)
+            end
+            if child.names and child.names ~= "" and child.names ~= child.name:gsub("/$", "") then
+              table.insert(info, "(" .. child.names .. ")")
             end
 
             local info_str = table.concat(info, "  ")
@@ -47,16 +47,27 @@ function M.setup()
           vim.keymap.set("n", "<CR>", function()
             local line_num = vim.api.nvim_win_get_cursor(0)[1]
             local child = children[line_num]
-            if child then
-              -- if the URI doesn't include the moo:// prefix, rebuild it
-              local target = child.uri
-              if not target:match("^moo://") then
-                local authority = uri:match("^moo://([^/]+)/")
-                target = string.format("moo://%s%s", authority, target)
-              end
-              vim.cmd("edit " .. target)
+            if child and child.uri then
+              vim.cmd("edit " .. vim.fn.fnameescape(child.uri))
             end
-          end, { buffer = args.buf, silent = true })
+          end, { buffer = args.buf, silent = true, desc = "Open item under cursor" })
+
+          -- Map - to go up a directory
+          vim.keymap.set("n", "-", function()
+            local base_uri = uri:gsub("/+$", "")
+            local parent = base_uri:match("^(moo://[^/]+/.*)/[^/]+$")
+            if not parent then
+              parent = base_uri:match("^(moo://[^/]+)/?$")
+              if parent and parent:sub(-1) ~= "/" then
+                parent = parent .. "/"
+              end
+            else
+              parent = parent .. "/"
+            end
+            if parent and parent ~= uri then
+              vim.cmd("edit " .. vim.fn.fnameescape(parent))
+            end
+          end, { buffer = args.buf, silent = true, desc = "Go up directory" })
         else
           vim.notify("Failed to list directory " .. uri .. (err and (": " .. err) or ""), vim.log.levels.ERROR)
         end

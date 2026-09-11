@@ -102,4 +102,31 @@ describe("lambdamoo.vfs", function()
 
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
+
+  it("renders directory listing and sets nofile/moo_dir buffer options on directory BufReadCmd", function()
+    local original_list_dir = webdav.list_dir
+    webdav.list_dir = function(uri)
+      if uri == "moo://waterpoint/" then
+        return {
+          { name = "object/", uri = "moo://waterpoint/object/" },
+          { name = "owned/", uri = "moo://waterpoint/owned/" },
+        }
+      end
+      return nil, "Not found"
+    end
+
+    local buf = vim.fn.bufadd("moo://waterpoint/")
+    vim.api.nvim_buf_call(buf, function()
+      vim.cmd("doautocmd BufReadCmd moo://waterpoint/")
+    end)
+
+    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    assert.are.same({ "object/", "owned/" }, lines)
+    assert.are.equal("nofile", vim.bo[buf].buftype)
+    assert.are.equal("moo_dir", vim.bo[buf].filetype)
+    assert.is_false(vim.bo[buf].modifiable)
+
+    webdav.list_dir = original_list_dir
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
 end)

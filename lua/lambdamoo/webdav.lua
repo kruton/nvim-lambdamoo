@@ -130,8 +130,17 @@ function M.list_dir(uri)
   })
 
   if res.status >= 200 and res.status < 300 then
-    local xml2lua = require("xml2lua")
-    local handler = require("xmlhandler.tree")
+    local ok_xml, xml2lua = pcall(require, "xml2lua")
+    if not ok_xml then
+      return nil, "xml2lua not found: please ensure 'a-usr/xml2lua.nvim' is installed"
+    end
+    local ok_tree, handler = pcall(require, "xml2lua.xmlhandler.tree")
+    if not ok_tree then
+      ok_tree, handler = pcall(require, "xmlhandler.tree")
+    end
+    if not ok_tree then
+      return nil, "xml2lua tree handler not found"
+    end
     local tree_handler = handler:new()
     local parser = xml2lua.parser(tree_handler)
     parser:parse(res.body)
@@ -152,6 +161,10 @@ function M.list_dir(uri)
       responses = { responses }
     end
 
+    local endpoint_base = conn.endpoint:match("^https?://[^/]+(/.*)$") or "/"
+    endpoint_base = endpoint_base:gsub("/+$", "") .. "/"
+    local full_req_path = endpoint_base .. path
+
     for _, resp in ipairs(responses) do
       local href = resp["D:href"]
       if type(href) == "table" then
@@ -159,16 +172,15 @@ function M.list_dir(uri)
       end
       if href then
         href = vim.uri_decode(href)
-        local name = href:match("([^/]+/?)$")
+        local href_path = href:match("^https?://[^/]+(/.*)$") or href
+        local norm_href = href_path:gsub("/+$", "")
+        local norm_req = full_req_path:gsub("/+$", "")
 
-        local current_path_name = path:match("([^/]+/?)$") or ""
-
-        if name and name ~= "" and name ~= current_path_name then
+        if norm_href ~= norm_req then
           -- Extract custom MOO properties
           local props = {}
           local propstat = resp["D:propstat"]
 
-          -- handle propstat being a table or array of tables
           local propstats = propstat
           if propstat and #propstat == 0 then
             propstats = { propstat }
@@ -184,10 +196,36 @@ function M.list_dir(uri)
             end
           end
 
-          local owner = props["moo-owner"] or ""
-          local perms = props["moo-permissions"] or ""
-          local names = props["moo-names"] or ""
-          local args_str = props["moo-arguments"] or ""
+          local is_col = false
+          if href_path:sub(-1) == "/" then
+            is_col = true
+          elseif props["D:resourcetype"] then
+            local rt = props["D:resourcetype"]
+            if type(rt) == "table" and (rt["D:collection"] or rt["collection"]) then
+              is_col = true
+            end
+          end
+
+          local rel_path = href_path
+          if rel_path:sub(1, #endpoint_base) == endpoint_base then
+            rel_path = rel_path:sub(#endpoint_base + 1)
+          end
+
+          local name = rel_path:match("([^/]+/?)$") or rel_path
+          if is_col and name:sub(-1) ~= "/" then
+            name = name .. "/"
+          end
+
+          if is_col and rel_path:sub(-1) ~= "/" then
+            rel_path = rel_path .. "/"
+          end
+
+          local child_uri = string.format("moo://%s/%s", authority, rel_path)
+
+          local owner = props["M:owner"] or props["moo-owner"] or props["owner"] or ""
+          local perms = props["M:permissions"] or props["moo-permissions"] or props["permissions"] or ""
+          local names = props["M:names"] or props["moo-names"] or props["names"] or ""
+          local args_str = props["M:arguments"] or props["moo-arguments"] or props["arguments"] or ""
 
           table.insert(children, {
             name = name,
@@ -195,7 +233,7 @@ function M.list_dir(uri)
             perms = type(perms) == "table" and perms[1] or perms,
             names = type(names) == "table" and names[1] or names,
             args = type(args_str) == "table" and args_str[1] or args_str,
-            uri = href,
+            uri = child_uri,
           })
         end
       end

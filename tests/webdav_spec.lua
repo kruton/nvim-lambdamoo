@@ -236,4 +236,106 @@ describe("lambdamoo.webdav", function()
       assert.are.equal('"tag-168-test2"', webdav.etags["moo://codepoint/object/168/verb/test2"])
     end)
   end)
+
+  describe("list_dir", function()
+    it("returns error on invalid URI or unconfigured authority", function()
+      local res, err = webdav.list_dir("invalid://uri")
+      assert.is_nil(res)
+      assert.truthy(err:match("Invalid URI"))
+
+      local res2, err2 = webdav.list_dir("moo://unconfigured/")
+      assert.is_nil(res2)
+      assert.truthy(err2:match("No connection profile configured"))
+    end)
+
+    it("parses PROPFIND XML response and filters out root collection", function()
+      lambdamoo.config.connections = {
+        {
+          authority = "testserver",
+          endpoint = "https://example.com/dav/",
+        },
+      }
+
+      local original_request = curl.request
+      curl.request = function(opts)
+        assert.are.equal("PROPFIND", opts.method)
+        assert.are.equal("https://example.com/dav/", opts.url)
+        assert.are.equal("1", opts.headers["Depth"])
+        return {
+          status = 207,
+          body = [[<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:M="urn:moo:webdav">
+  <D:response>
+    <D:href>/dav/</D:href>
+    <D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/dav/object/</D:href>
+    <D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/dav/owned/</D:href>
+    <D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop></D:propstat>
+  </D:response>
+</D:multistatus>]],
+        }
+      end
+
+      local children, err = webdav.list_dir("moo://testserver/")
+      curl.request = original_request
+
+      assert.is_nil(err)
+      assert.are.equal(2, #children)
+      assert.are.equal("object/", children[1].name)
+      assert.are.equal("moo://testserver/object/", children[1].uri)
+      assert.are.equal("owned/", children[2].name)
+      assert.are.equal("moo://testserver/owned/", children[2].uri)
+    end)
+
+    it("extracts MOO-specific extensions like M:owner and M:permissions", function()
+      lambdamoo.config.connections = {
+        {
+          authority = "testserver",
+          endpoint = "https://example.com/dav/",
+        },
+      }
+
+      local original_request = curl.request
+      curl.request = function(opts)
+        return {
+          status = 207,
+          body = [[<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:M="urn:moo:webdav">
+  <D:response>
+    <D:href>/dav/owned/525/verb/</D:href>
+    <D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/dav/owned/525/verb/check_authorization</D:href>
+    <D:propstat>
+      <D:prop>
+        <M:owner>#267</M:owner>
+        <M:permissions>rxd</M:permissions>
+        <M:names>check_authorization</M:names>
+        <M:arguments>{"this", "none", "this"}</M:arguments>
+      </D:prop>
+    </D:propstat>
+  </D:response>
+</D:multistatus>]],
+        }
+      end
+
+      local children, err = webdav.list_dir("moo://testserver/owned/525/verb/")
+      curl.request = original_request
+
+      assert.is_nil(err)
+      assert.are.equal(1, #children)
+      local item = children[1]
+      assert.are.equal("check_authorization", item.name)
+      assert.are.equal("moo://testserver/owned/525/verb/check_authorization", item.uri)
+      assert.are.equal("#267", item.owner)
+      assert.are.equal("rxd", item.perms)
+      assert.are.equal('{"this", "none", "this"}', item.args)
+    end)
+  end)
 end)

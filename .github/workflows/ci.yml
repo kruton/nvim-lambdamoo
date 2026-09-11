@@ -52,9 +52,10 @@ jobs:
           neovim: true
           version: ${{ matrix.neovim-version }}
 
-      - name: Install dependencies (plenary.nvim)
+      - name: Install dependencies (plenary.nvim, xml2lua.nvim)
         run: |
           git clone --depth 1 https://github.com/nvim-lua/plenary.nvim .ci/plenary.nvim
+          git clone --depth 1 https://github.com/a-usr/xml2lua.nvim .ci/xml2lua.nvim
 
       - name: Install moo-lsp-rs binary
         run: |
